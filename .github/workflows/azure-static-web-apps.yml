@@ -25,7 +25,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend
-          path: ./frontend
+          path: ./
 
       - name: Download Frontend Artifact
         uses: actions/download-artifact@v4
