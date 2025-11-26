@@ -1,4 +1,4 @@
-name: Deploy Frontend to Azure Web App
+name: Deploy Frontend to Azure Static Web Apps
 
 on:
   push:
@@ -7,39 +7,22 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
+  id-token: write
 
 jobs:
-  build-and-deploy:
+  build_and_deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1. Azure にログイン
-      - name: Azure Login
-        uses: azure/login@v1
+      # Static Web Apps デプロイ
+      - name: Build And Deploy to SWA
+        uses: Azure/static-web-apps-deploy@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # 2. Frontend のアップロード
-      - name: Upload Frontend Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend
-          path: ./frontend  # ← あなたのフロントのフォルダに合わせて変更
-
-      - name: Download Frontend Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend
-          path: frontend
-
-      # 3. Azure Web App にデプロイ
-      - name: Deploy Frontend to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: "nomikai-webapp2"
-          package: "frontend"
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          app_location: "frontend"    # ← frontend フォルダ
+          output_location: "dist"     # ← build 結果が dist に出る場合
+          skip_app_build: false       # ← 自動で npm install & npm run build を行う
