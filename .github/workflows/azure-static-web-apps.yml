@@ -1,4 +1,4 @@
-name: Deploy Frontend to Azure
+name: Deploy Frontend to Azure Web App
 
 on:
   push:
@@ -18,14 +18,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      #########################################################
-      # Frontend（静的サイト）デプロイ
-      #########################################################
+      # 1. Azure にログイン
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 2. Frontend のアップロード
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend
-          path: ./frontend  # ← 必要に応じて変更（frontendフォルダを指定）
+          path: ./frontend  # ← あなたのフロントのフォルダに合わせて変更
 
       - name: Download Frontend Artifact
         uses: actions/download-artifact@v4
@@ -33,6 +37,7 @@ jobs:
           name: frontend
           path: frontend
 
+      # 3. Azure Web App にデプロイ
       - name: Deploy Frontend to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
