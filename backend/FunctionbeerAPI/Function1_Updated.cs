@@ -32,7 +32,6 @@ namespace FunctionbeerAPI
             }
         }
 
-        // ���N�G�X�g�f�[�^�̌^���`����N���X
         public class CalculateRequest
         {
             public decimal TotalAmount { get; set; }
@@ -60,15 +59,15 @@ namespace FunctionbeerAPI
 
             try
             {
+                string connectionString = await GetConnectionStringFromKeyVault();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
 
-                    // Nomikai �e�[�u���� ID ����m�F
                     var checkQuery = "SELECT COUNT(*) FROM Nomikai WHERE ID = @ID";
                     using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn))
                     {
-                        checkCmd.Parameters.AddWithValue("@ID", data.EventID);  // @ID �� CalculateRequest ����̒l��ݒ�
+                        checkCmd.Parameters.AddWithValue("@ID", data.EventID);
                         int count = (int)await checkCmd.ExecuteScalarAsync();
                         if (count == 0)
                         {
@@ -76,7 +75,6 @@ namespace FunctionbeerAPI
                         }
                     }
 
-                    // Nomikai �e�[�u���ւ� INSERT �܂��� UPDATE ����
                     var updateQuery = "UPDATE Nomikai SET amount = @Amount WHERE ID = @EventID";
                     using (SqlCommand cmd = new SqlCommand(updateQuery, conn))
                     {
@@ -114,6 +112,7 @@ namespace FunctionbeerAPI
 
             try
             {
+                string connectionString = await GetConnectionStringFromKeyVault();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
@@ -156,6 +155,7 @@ namespace FunctionbeerAPI
 
             try
             {
+                string connectionString = await GetConnectionStringFromKeyVault();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
@@ -209,14 +209,12 @@ namespace FunctionbeerAPI
                 return new BadRequestObjectResult(new { Message = "Amount must be greater than 0." });
             }
 
-            // �Q���҂��J���}�ŕ������A�e�Q���҂̃g���~���O
-            var participants = data.Participants.Split(new[] { '�A' }, StringSplitOptions.RemoveEmptyEntries);
-
-            // ���z��l���Ŋ���
+            var participants = data.Participants.Split(new[] { '、' }, StringSplitOptions.RemoveEmptyEntries);
             decimal amountPerParticipant = data.Amount / (decimal)participants.Length;
 
             try
             {
+                string connectionString = await GetConnectionStringFromKeyVault();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
@@ -251,6 +249,7 @@ namespace FunctionbeerAPI
 
             return new OkObjectResult(response);
         }
+
         [FunctionName("SearchNomikaiEvent")]
         public static async Task<IActionResult> SearchNomikaiEvent(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "nomikai/search")] HttpRequest req,
@@ -271,10 +270,11 @@ namespace FunctionbeerAPI
 
             try
             {
+                string connectionString = await GetConnectionStringFromKeyVault();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
-                    string query = "SELECT * FROM Nomikai WHERE 1=1"; // �����̃N�G������
+                    string query = "SELECT * FROM Nomikai WHERE 1=1";
 
                     if (!string.IsNullOrEmpty(eventName))
                     {
@@ -342,7 +342,6 @@ namespace FunctionbeerAPI
         {
             log.LogInformation("UpdatePaymentFlags function processed a request.");
 
-            // ���N�G�X�g�{�f�B��ǂݍ���
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var updates = JsonConvert.DeserializeObject<List<PaymentFlagUpdateRequest>>(requestBody);
 
@@ -353,6 +352,7 @@ namespace FunctionbeerAPI
 
             try
             {
+                string connectionString = await GetConnectionStringFromKeyVault();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
@@ -388,14 +388,12 @@ namespace FunctionbeerAPI
             return new OkObjectResult(response);
         }
 
-        // �x�����t���O�X�V���N�G�X�g�̃N���X��`
         public class PaymentFlagUpdateRequest
         {
             public int Id { get; set; }
             public bool PaymentFlag { get; set; }
         }
 
-        // CORS �ݒ��K�p����w���p�[���\�b�h
         private static IActionResult CreateCorsResponse(IActionResult result, HttpResponse response)
         {
             response.Headers.Add("Access-Control-Allow-Origin", "*");
