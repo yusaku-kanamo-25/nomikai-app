@@ -30,7 +30,7 @@ new Vue({
         const numberOfParticipants = participantList.length;
         const amountPerParticipant = this.totalAmount / numberOfParticipants;
 
-        const response = await fetch('https://m3h-beerkn-functionapp.azurewebsites.net/api/savenomikai', {
+        const response = await fetch('https://nomikai-funcapp-g4hdgyachmhwfxbq.japaneast-01.azurewebsites.net/api/savenomikai', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -58,7 +58,7 @@ new Vue({
     },
     async searchNomikaiEvent() {
       try {
-        let url = 'https://m3h-beerkn-functionapp.azurewebsites.net/api/nomikai/search?';
+        let url = 'https://nomikai-funcapp-g4hdgyachmhwfxbq.japaneast-01.azurewebsites.net/api/nomikai/search?';
 
         if (this.searchType === 'date') {
           url += `eventdate=${this.searchDate}`;
@@ -94,7 +94,7 @@ new Vue({
           paymentFlag: result.paymentFlag
         }));
 
-        const response = await fetch('https://m3h-beerkn-functionapp.azurewebsites.net/api/updatepaymentflags', {
+        const response = await fetch('https://nomikai-funcapp-g4hdgyachmhwfxbq.japaneast-01.azurewebsites.net/api/updatepaymentflags', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
