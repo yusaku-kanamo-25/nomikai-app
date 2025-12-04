@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Microsoft.Data.SqlClient;
 using System.IO;
 using System.Threading.Tasks;
@@ -18,21 +18,38 @@ namespace FunctionbeerAPI
     {
         private static readonly string keyVaultUrl = Environment.GetEnvironmentVariable("KeyVaultUri") ?? "https://m3h-keyvault.vault.azure.net/";
         
-        private static async Task<string> GetConnectionStringFromKeyVault()
+        private static async Task<string> GetConnectionStringAsync()
         {
-            try
+            // Priority 1: Try environment variable first
+            string connectionString = Environment.GetEnvironmentVariable("DatabaseConnectionString");
+            
+            if (!string.IsNullOrEmpty(connectionString))
             {
-                var client = new SecretClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
-                KeyVaultSecret secret = await client.GetSecretAsync("DatabaseConnectionString");
-                return secret.Value;
+                return connectionString;
             }
-            catch (Exception ex)
+            
+            // Priority 2: Try Key Vault as optional fallback (only if KeyVaultUri is configured)
+            string kvUri = Environment.GetEnvironmentVariable("KeyVaultUri");
+            if (!string.IsNullOrEmpty(kvUri))
             {
-                throw new InvalidOperationException($"Failed to retrieve connection string from Key Vault: {ex.Message}", ex);
+                try
+                {
+                    var client = new SecretClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
+                    KeyVaultSecret secret = await client.GetSecretAsync("DatabaseConnectionString");
+                    return secret.Value;
+                }
+                catch (Exception ex)
+                {
+                    // Key Vault is optional, so log but continue
+                    throw new InvalidOperationException($"Environment variable 'DatabaseConnectionString' not found and Key Vault retrieval failed: {ex.Message}", ex);
+                }
             }
+            
+            // No connection string available
+            throw new InvalidOperationException("Database connection string not found. Please set 'DatabaseConnectionString' environment variable or configure Key Vault.");
         }
 
-        // ���N�G�X�g�f�[�^�̌^���`����N���X
+        // ・ｽ・ｽ・ｽN・ｽG・ｽX・ｽg・ｽf・ｽ[・ｽ^・ｽﾌ型・ｽ・ｽ・ｽ`・ｽ・ｽ・ｽ・ｽN・ｽ・ｽ・ｽX
         public class CalculateRequest
         {
             public decimal TotalAmount { get; set; }
@@ -60,15 +77,16 @@ namespace FunctionbeerAPI
 
             try
             {
+                string connectionString = await GetConnectionStringAsync();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
 
-                    // Nomikai �e�[�u���� ID ����m�F
+                    // Nomikai ・ｽe・ｽ[・ｽu・ｽ・ｽ・ｽ・ｽ ID ・ｽ・ｽ・ｽ・ｽm・ｽF
                     var checkQuery = "SELECT COUNT(*) FROM Nomikai WHERE ID = @ID";
                     using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn))
                     {
-                        checkCmd.Parameters.AddWithValue("@ID", data.EventID);  // @ID �� CalculateRequest ����̒l��ݒ�
+                        checkCmd.Parameters.AddWithValue("@ID", data.EventID);  // @ID ・ｽ・ｽ CalculateRequest ・ｽ・ｽ・ｽ・ｽﾌ値・ｽ・ｽﾝ抵ｿｽ
                         int count = (int)await checkCmd.ExecuteScalarAsync();
                         if (count == 0)
                         {
@@ -76,7 +94,7 @@ namespace FunctionbeerAPI
                         }
                     }
 
-                    // Nomikai �e�[�u���ւ� INSERT �܂��� UPDATE ����
+                    // Nomikai ・ｽe・ｽ[・ｽu・ｽ・ｽ・ｽﾖゑｿｽ INSERT ・ｽﾜゑｿｽ・ｽ・ｽ UPDATE ・ｽ・ｽ・ｽ・ｽ
                     var updateQuery = "UPDATE Nomikai SET amount = @Amount WHERE ID = @EventID";
                     using (SqlCommand cmd = new SqlCommand(updateQuery, conn))
                     {
@@ -114,6 +132,7 @@ namespace FunctionbeerAPI
 
             try
             {
+                string connectionString = await GetConnectionStringAsync();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
@@ -156,6 +175,7 @@ namespace FunctionbeerAPI
 
             try
             {
+                string connectionString = await GetConnectionStringAsync();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
@@ -209,14 +229,15 @@ namespace FunctionbeerAPI
                 return new BadRequestObjectResult(new { Message = "Amount must be greater than 0." });
             }
 
-            // �Q���҂��J���}�ŕ������A�e�Q���҂̃g���~���O
-            var participants = data.Participants.Split(new[] { '�A' }, StringSplitOptions.RemoveEmptyEntries);
+            // ・ｽQ・ｽ・ｽ・ｽﾒゑｿｽ・ｽJ・ｽ・ｽ・ｽ}・ｽﾅ包ｿｽ・ｽ・ｽ・ｽ・ｽ・ｽA・ｽe・ｽQ・ｽ・ｽ・ｽﾒのト・ｽ・ｽ・ｽ~・ｽ・ｽ・ｽO
+            var participants = data.Participants.Split(new[] { "、" }, StringSplitOptions.RemoveEmptyEntries);
 
-            // ���z��l���Ŋ���
+            // ・ｽ・ｽ・ｽz・ｽ・ｽl・ｽ・ｽ・ｽﾅ奇ｿｽ・ｽ・ｽ
             decimal amountPerParticipant = data.Amount / (decimal)participants.Length;
 
             try
             {
+                string connectionString = await GetConnectionStringAsync();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
@@ -271,10 +292,11 @@ namespace FunctionbeerAPI
 
             try
             {
+                string connectionString = await GetConnectionStringAsync();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
-                    string query = "SELECT * FROM Nomikai WHERE 1=1"; // �����̃N�G������
+                    string query = "SELECT * FROM Nomikai WHERE 1=1"; // 蝓ｺ譛ｬ縺ｮ繧ｯ繧ｨ繝ｪ譚｡莉ｶ
 
                     if (!string.IsNullOrEmpty(eventName))
                     {
@@ -342,7 +364,7 @@ namespace FunctionbeerAPI
         {
             log.LogInformation("UpdatePaymentFlags function processed a request.");
 
-            // ���N�G�X�g�{�f�B��ǂݍ���
+            // ・ｽ・ｽ・ｽN・ｽG・ｽX・ｽg・ｽ{・ｽf・ｽB・ｽ・ｽﾇみ搾ｿｽ・ｽ・ｽ
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var updates = JsonConvert.DeserializeObject<List<PaymentFlagUpdateRequest>>(requestBody);
 
@@ -353,6 +375,7 @@ namespace FunctionbeerAPI
 
             try
             {
+                string connectionString = await GetConnectionStringAsync();
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
@@ -388,14 +411,14 @@ namespace FunctionbeerAPI
             return new OkObjectResult(response);
         }
 
-        // �x�����t���O�X�V���N�G�X�g�̃N���X��`
+        // ・ｽx・ｽ・ｽ・ｽ・ｽ・ｽt・ｽ・ｽ・ｽO・ｽX・ｽV・ｽ・ｽ・ｽN・ｽG・ｽX・ｽg・ｽﾌク・ｽ・ｽ・ｽX・ｽ・ｽ`
         public class PaymentFlagUpdateRequest
         {
             public int Id { get; set; }
             public bool PaymentFlag { get; set; }
         }
 
-        // CORS �ݒ��K�p����w���p�[���\�b�h
+        // CORS ・ｽﾝ抵ｿｽ・ｽK・ｽp・ｽ・ｽ・ｽ・ｽw・ｽ・ｽ・ｽp・ｽ[・ｽ・ｽ・ｽ\・ｽb・ｽh
         private static IActionResult CreateCorsResponse(IActionResult result, HttpResponse response)
         {
             response.Headers.Add("Access-Control-Allow-Origin", "*");
@@ -405,3 +428,4 @@ namespace FunctionbeerAPI
         }
     }
 }
+

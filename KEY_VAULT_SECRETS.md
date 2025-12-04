@@ -183,7 +183,7 @@ az functionapp log tail \
   --resource-group your-resource-group
 
 # Test endpoint
-curl -X GET https://m3h-beerkn-functionapp.azurewebsites.net/api/nomikai/search?eventdate=2025-11-28
+curl -X GET https://nomikai-funcapp.azurewebsites.net/api/nomikai/search?eventdate=2025-11-28
 ```
 
 ---
@@ -195,7 +195,7 @@ curl -X GET https://m3h-beerkn-functionapp.azurewebsites.net/api/nomikai/search?
 | "403 Forbidden" from Key Vault | Function App doesn't have permission | Re-run Step 2 (Grant Access) |
 | "404 Secret Not Found" | Wrong secret name | Verify secret name is exactly `DatabaseConnectionString` |
 | "Connection timeout" | SQL credentials invalid | Verify connection string credentials match SQL Server |
-| "Managed Identity not found" | Identity not enabled | Run: `az functionapp identity assign --name m3h-beerkn-functionapp --resource-group your-resource-group` |
+| "Managed Identity not found" | Identity not enabled | Run: `az functionapp identity assign --name nomikai-funcapp --resource-group your-resource-group` |
 
 ---
 

@@ -30,7 +30,7 @@ new Vue({
         const numberOfParticipants = participantList.length;
         const amountPerParticipant = this.totalAmount / numberOfParticipants;
 
-        const response = await fetch('https://nice-stone-031ceb100.3.azurestaticapps.net/api/savenomikai', {
+        const response = await fetch(window.appConfig.getApiUrl('/api/savenomikai'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -58,7 +58,7 @@ new Vue({
     },
     async searchNomikaiEvent() {
       try {
-        let url = 'https://nice-stone-031ceb100.3.azurestaticapps.net/api/nomikai/search?';
+        let url = window.appConfig.getApiUrl('/api/nomikai/search?');
 
         if (this.searchType === 'date') {
           url += `eventdate=${this.searchDate}`;
@@ -94,7 +94,7 @@ new Vue({
           paymentFlag: result.paymentFlag
         }));
 
-        const response = await fetch('https://nice-stone-031ceb100.3.azurestaticapps.net/api/updatepaymentflags', {
+        const response = await fetch(window.appConfig.getApiUrl('/api/updatepaymentflags'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

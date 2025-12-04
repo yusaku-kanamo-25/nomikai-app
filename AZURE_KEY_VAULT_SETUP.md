@@ -66,7 +66,7 @@ az keyvault secret show --vault-name m3h-keyvault --name DatabaseConnectionStrin
 ## Function App Configuration
 
 ### 1. Enable Managed Identity
-- Go to your Function App (m3h-beerkn-functionapp)
+- Go to your Function App (nomikai-funcapp)
 - In the left menu, click **Identity**
 - Enable **System assigned** managed identity
 - Click **Save**
@@ -95,7 +95,7 @@ az keyvault secret show --vault-name m3h-keyvault --name DatabaseConnectionStrin
 | Secret Name | Value | Notes |
 |------------|-------|-------|
 | `DatabaseConnectionString` | Your SQL connection string | Used in backend for database access |
-| `ApiUrl` | https://m3h-beerkn-functionapp.azurewebsites.net | (Optional) For frontend configuration |
+| `ApiUrl` | https://nomikai-funcapp.azurewebsites.net | (Optional) For frontend configuration |
 
 ---
 

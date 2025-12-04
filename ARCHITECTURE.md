@@ -22,7 +22,7 @@
                            │
                            │
 ┌──────────────────────────────────────────────────────────────────────┐
-│              Azure Function App (m3h-beerkn-functionapp)              │
+│              Azure Function App (nomikai-funcapp)              │
 │                                                                        │
 │  ┌────────────────────────────────────────────────────────────┐     │
 │  │ HTTP Triggered Functions:                                   │     │
@@ -250,7 +250,7 @@ KeyVaultUri = https://m3h-keyvault.vault.azure.net/
 
 ### Frontend (.env files)
 ```
-VITE_API_URL = https://m3h-beerkn-functionapp.azurewebsites.net
+VITE_API_URL = https://nomikai-funcapp.azurewebsites.net
 ```
 
 ---

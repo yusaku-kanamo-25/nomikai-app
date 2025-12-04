@@ -1,211 +1,220 @@
-# Azure Deployment Checklist
+# Deployment Checklist
 
-## Prerequisites
-- [ ] Azure subscription
-- [ ] Azure CLI installed
-- [ ] Visual Studio or .NET CLI
-- [ ] Azure Key Vault created
+## ✅ Pre-Deployment Setup
 
----
+### 1. GitHub Actions Setup (Primary Deployment Method)
 
-## STEP 1: Azure Key Vault Setup
+#### Backend Function App
+- [ ] Get Azure Function App publish profile from Azure Portal
+- [ ] Go to: Function App → **Get publish profile**
+- [ ] Copy entire XML content
+- [ ] Add GitHub secret: `AZURE_FUNCTIONAPP_PUBLISH_PROFILE`
+- [ ] Path: **Settings** → **Secrets and variables** → **Actions**
 
-### Create Key Vault (if not exists)
-```bash
-az keyvault create --name m3h-keyvault --resource-group your-resource-group --location eastus
-```
+#### Frontend Static Web App (Already Configured)
+- [ ] Verify secret exists: `AZURE_STATIC_WEB_APPS_API_TOKEN_NICE_STONE_031CEB100`
+- [ ] No action needed if already set
 
-### Store Secrets in Key Vault
-```bash
-# Store Database Connection String
-az keyvault secret set --vault-name m3h-keyvault \
-  --name DatabaseConnectionString \
-  --value "Server=tcp:m3hkanamofunctiondb.database.windows.net,1433;Initial Catalog=m3h-kanamo-functionDB;Persist Security Info=False;User ID=your-username;Password=your-password;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
-```
+### 2. Azure Function App Configuration
 
-### Verify Secret
-```bash
-az keyvault secret show --vault-name m3h-keyvault --name DatabaseConnectionString
-```
+#### Application Settings (Environment Variables - Primary)
+- [ ] Go to Function App: `nomikai-funcapp`
+- [ ] Navigate to: **Configuration** → **Application settings**
+- [ ] Add/Verify:
+  ```
+  DatabaseConnectionString = "Server=...;Database=...;User Id=...;Password=...;Encrypt=True;"
+  KeyVaultUri = "" (leave empty - Key Vault is optional)
+  ```
+- [ ] Click **Save** and **Continue**
 
----
+#### Optional: Azure Key Vault (if needed)
+- [ ] Only configure if you want Key Vault as fallback
+- [ ] See [Azure Key Vault Setup](#optional-azure-key-vault-setup) below
 
-## STEP 2: Function App Configuration
-
-### Enable Managed Identity
-```bash
-az functionapp identity assign --name m3h-beerkn-functionapp --resource-group your-resource-group
-```
-
-### Grant Key Vault Access to Function App
-```bash
-# Get the Principal ID of the managed identity
-PRINCIPAL_ID=$(az functionapp identity show --name m3h-beerkn-functionapp --resource-group your-resource-group --query principalId -o tsv)
-
-# Grant access to Key Vault
-az keyvault set-policy --name m3h-keyvault \
-  --object-id $PRINCIPAL_ID \
-  --secret-permissions get list
-```
-
-### Add Application Settings to Function App
-```bash
-az functionapp config appsettings set --name m3h-beerkn-functionapp \
-  --resource-group your-resource-group \
-  --settings "KeyVaultUri=https://m3h-keyvault.vault.azure.net/"
-```
-
-### Verify Settings
-```bash
-az functionapp config appsettings list --name m3h-beerkn-functionapp --resource-group your-resource-group
-```
+### 3. CORS Configuration
+- [ ] Function App → **CORS** settings
+- [ ] Add frontend URL: `https://nice-stone-031ceb100.3.azurestaticapps.net`
+- [ ] Or add wildcard: `*` (for development)
+- [ ] Remove `http://localhost:*` in production
 
 ---
 
-## STEP 3: Backend Deployment
+## 🚀 Deployment Process
 
-### Option A: Deploy using Zip Deploy (Local)
+### Automated Deployment (Recommended)
+
+#### Deploy Backend
+1. Make changes to backend code
+2. Commit and push to `main` branch:
+   ```bash
+   git add backend/
+   git commit -m "Update backend function"
+   git push origin main
+   ```
+3. GitHub Actions automatically deploys
+4. Monitor at: https://github.com/yusaku-kanamo-25/nomikai-app/actions
+
+#### Deploy Frontend
+1. Make changes to frontend code
+2. Commit and push to `main` branch:
+   ```bash
+   git add frontend/
+   git commit -m "Update frontend"
+   git push origin main
+   ```
+3. GitHub Actions automatically deploys
+
+#### Manual Deployment Trigger
+- [ ] Go to **Actions** tab in GitHub
+- [ ] Select workflow: **Deploy Azure Functions App**
+- [ ] Click **Run workflow**
+- [ ] Select `main` branch → **Run workflow**
+
+### Manual Deployment (Alternative)
+
+#### Backend via Azure CLI
+#### Backend via Azure CLI
 ```bash
 cd backend/FunctionbeerAPI
-
-# Build the project
 dotnet build --configuration Release
-
-# Create a deployment package
 dotnet publish --configuration Release --output ./publish
-
-# Zip the published files
 cd publish
-zip -r ../FunctionbeerAPI.zip .
+Compress-Archive -Path * -DestinationPath ../deploy.zip
 cd ..
-
-# Deploy using Azure CLI
-az functionapp deployment source config-zip --resource-group your-resource-group \
-  --name m3h-beerkn-functionapp \
-  --src FunctionbeerAPI.zip
+az functionapp deployment source config-zip --resource-group M3Harbor --name nomikai-funcapp --src deploy.zip
 ```
 
-### Option B: Deploy using Visual Studio
-1. Right-click project → Publish
-2. Select existing Function App (m3h-beerkn-functionapp)
-3. Click Publish
-
-### Option C: Deploy using Azure DevOps or GitHub Actions
-See `DEPLOYMENT_GITHUB_ACTIONS.md` for CI/CD setup
+#### Backend via Visual Studio
+1. Right-click project → **Publish**
+2. Select: `nomikai-funcapp`
+3. Click **Publish**
 
 ---
 
-## STEP 4: Frontend Deployment
+## ✅ Testing & Verification
 
-### Build Frontend
+### Backend Health Check
 ```bash
-cd frontend
-npm install
-npm run build:azure
+# Test base URL
+curl https://nomikai-funcapp.azurewebsites.net
+
+# Test search endpoint
+curl "https://nomikai-funcapp.azurewebsites.net/api/nomikai/search?eventdate=2024-12-04"
 ```
 
-### Deploy to Azure Static Web Apps (if using)
+### Frontend Health Check
 ```bash
-az staticwebapp create \
-  --name nomikai-app-frontend \
-  --resource-group your-resource-group \
-  --source ./dist \
-  --build-folder dist \
-  --api-location api
+# Test frontend
+curl https://nice-stone-031ceb100.3.azurestaticapps.net
 ```
 
-### Or Deploy to Azure Storage + CDN
-```bash
-# Create storage account (if not exists)
-az storage account create --name nomikaistorage --resource-group your-resource-group --location eastus
+### Integration Test
+- [ ] Open frontend in browser
+- [ ] Register a new event with participants
+- [ ] Verify event is saved
+- [ ] Search for the event
+- [ ] Update payment flags
+- [ ] Verify updates persist
 
-# Upload files
-az storage blob upload-batch \
-  --account-name nomikaistorage \
-  --destination '$web' \
-  --source ./dist
-```
+### Check Deployment Logs
+- [ ] GitHub Actions: https://github.com/yusaku-kanamo-25/nomikai-app/actions
+- [ ] Azure Function Logs: Portal → Function App → **Log stream**
+- [ ] Static Web App Logs: Portal → Static Web App → **Logs**
 
 ---
 
-## STEP 5: Testing
+## 🚨 Troubleshooting
 
-### Test Backend Functions
-```bash
-# Test Calculate endpoint
-curl -X POST https://m3h-beerkn-functionapp.azurewebsites.net/api/calculate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "totalAmount": 10000,
-    "numberOfParticipants": 5,
-    "eventID": 1,
-    "participantID": 1
-  }'
+### GitHub Actions Deployment Fails
 
-# Test Search endpoint
-curl -X GET "https://m3h-beerkn-functionapp.azurewebsites.net/api/nomikai/search?eventdate=2025-11-28"
+**Issue: Publish profile secret not found**
+```
+Solution:
+1. Regenerate publish profile from Azure Portal
+2. Update GitHub secret: AZURE_FUNCTIONAPP_PUBLISH_PROFILE
+3. Retry workflow
 ```
 
-### Test Frontend
-- Open `https://your-frontend-url`
-- Test event registration
-- Test event search
-- Test payment flag updates
-
----
-
-## STEP 6: Monitoring & Logging
-
-### View Function App Logs
-```bash
-az functionapp log tail --name m3h-beerkn-functionapp --resource-group your-resource-group
+**Issue: Build fails**
+```
+Solution:
+1. Check GitHub Actions logs for errors
+2. Verify .NET 8.0 is specified
+3. Check NuGet package restore issues
+4. Test build locally: dotnet build
 ```
 
-### Check Application Insights
-```bash
-# View insights URL
-az functionapp show --name m3h-beerkn-functionapp --resource-group your-resource-group --query appInsightsId
+### Function App Errors
+
+**Issue: 500 Internal Server Error**
+```
+Solution:
+1. Check Application Settings in Azure
+2. Verify DatabaseConnectionString is set
+3. Check Function App logs for exceptions
+4. Test connection string locally
 ```
 
----
+**Issue: CORS errors from frontend**
+```
+Solution:
+1. Function App → CORS settings
+2. Add frontend URL or wildcard (*)
+3. Save and restart Function App
+```
 
-## Troubleshooting
+**Issue: Database connection fails**
+```
+Solution:
+1. Verify connection string format
+2. Check SQL Server firewall allows Azure services
+3. Test connection using Azure Data Studio
+4. Check SQL credentials are correct
+```
 
-### Connection String Not Found Error
-- Verify Key Vault secret exists: `az keyvault secret show --vault-name m3h-keyvault --name DatabaseConnectionString`
-- Verify Function App has managed identity enabled
-- Verify access policy is set correctly
+### Key Vault Issues (if using)
 
-### 401 Unauthorized Errors
-- Check CORS settings in Function App
-- Verify API keys if using API Key authentication
-
-### Database Connection Timeouts
-- Check SQL Server firewall rules allow Azure services
-- Verify connection string is correct
-- Check if SQL Server is running
-
----
-
-## Cleanup (When needed)
-```bash
-# Delete Function App
-az functionapp delete --name m3h-beerkn-functionapp --resource-group your-resource-group
-
-# Delete Key Vault
-az keyvault delete --name m3h-keyvault --resource-group your-resource-group
-
-# Delete resource group
-az group delete --name your-resource-group
+**Issue: Key Vault access denied**
+```
+Solution:
+1. Enable Managed Identity on Function App
+2. Grant Key Vault access policy
+3. Verify KeyVaultUri setting
+4. Or use environment variable instead (primary method)
 ```
 
 ---
 
-## Important Notes
+## 📊 Monitoring
 
-✅ **Secrets are NOW retrieved from Azure Key Vault** - Connection string is no longer hardcoded  
-✅ **Managed Identity used** - No need to store credentials in app settings  
-✅ **CORS enabled** - Frontend can communicate with backend  
-⚠️ **Replace `your-resource-group`** with your actual Azure resource group name  
-⚠️ **Replace `your-username` and `your-password`** with your actual SQL credentials  
-⚠️ **Keep `AZURE_KEY_VAULT_SETUP.md` and this file** for future reference  
+### GitHub Actions Monitoring
+- [ ] Enable email notifications for failed workflows
+- [ ] Review deployment history regularly
+- [ ] Check workflow run times
+
+### Azure Monitoring
+- [ ] Enable Application Insights (recommended)
+- [ ] Set up alerts for:
+  - Failed requests
+  - High response times
+  - Exceptions
+- [ ] Review metrics dashboard
+
+### View Logs
+```bash
+# Function App logs
+az functionapp log tail --name nomikai-funcapp --resource-group M3Harbor
+
+# View Application Settings
+az functionapp config appsettings list --name nomikai-funcapp --resource-group M3Harbor
+```
+
+---
+
+## 📝 Optional: Azure Key Vault Setup
+
+**Note**: Key Vault is optional. Environment variables are the primary configuration method.
+
+### Only if you want Key Vault as fallback:
+
+#### 1. Enable Managed Identity  
