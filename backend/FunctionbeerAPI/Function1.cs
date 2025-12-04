@@ -49,7 +49,7 @@ namespace FunctionbeerAPI
             throw new InvalidOperationException("Database connection string not found. Please set 'DatabaseConnectionString' environment variable or configure Key Vault.");
         }
 
-        // ・ｽ・ｽ・ｽN・ｽG・ｽX・ｽg・ｽf・ｽ[・ｽ^・ｽﾌ型・ｽ・ｽ・ｽ`・ｽ・ｽ・ｽ・ｽN・ｽ・ｽ・ｽX
+        // リクエストデータの型定義クラス
         public class CalculateRequest
         {
             public decimal TotalAmount { get; set; }
@@ -82,11 +82,11 @@ namespace FunctionbeerAPI
                 {
                     conn.Open();
 
-                    // Nomikai ・ｽe・ｽ[・ｽu・ｽ・ｽ・ｽ・ｽ ID ・ｽ・ｽ・ｽ・ｽm・ｽF
+                    // Nomikai テーブルの ID 存在確認
                     var checkQuery = "SELECT COUNT(*) FROM Nomikai WHERE ID = @ID";
                     using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn))
                     {
-                        checkCmd.Parameters.AddWithValue("@ID", data.EventID);  // @ID ・ｽ・ｽ CalculateRequest ・ｽ・ｽ・ｽ・ｽﾌ値・ｽ・ｽﾝ抵ｿｽ
+                        checkCmd.Parameters.AddWithValue("@ID", data.EventID);  // @ID に CalculateRequest からの値を設定
                         int count = (int)await checkCmd.ExecuteScalarAsync();
                         if (count == 0)
                         {
@@ -94,7 +94,7 @@ namespace FunctionbeerAPI
                         }
                     }
 
-                    // Nomikai ・ｽe・ｽ[・ｽu・ｽ・ｽ・ｽﾖゑｿｽ INSERT ・ｽﾜゑｿｽ・ｽ・ｽ UPDATE ・ｽ・ｽ・ｽ・ｽ
+                    // Nomikai テーブルへの UPDATE 処理
                     var updateQuery = "UPDATE Nomikai SET amount = @Amount WHERE ID = @EventID";
                     using (SqlCommand cmd = new SqlCommand(updateQuery, conn))
                     {
@@ -229,10 +229,10 @@ namespace FunctionbeerAPI
                 return new BadRequestObjectResult(new { Message = "Amount must be greater than 0." });
             }
 
-            // ・ｽQ・ｽ・ｽ・ｽﾒゑｿｽ・ｽJ・ｽ・ｽ・ｽ}・ｽﾅ包ｿｽ・ｽ・ｽ・ｽ・ｽ・ｽA・ｽe・ｽQ・ｽ・ｽ・ｽﾒのト・ｽ・ｽ・ｽ~・ｽ・ｽ・ｽO
+            // 参加者をカンマで分割し、各参加者のトリミング
             var participants = data.Participants.Split(new[] { "、" }, StringSplitOptions.RemoveEmptyEntries);
 
-            // ・ｽ・ｽ・ｽz・ｽ・ｽl・ｽ・ｽ・ｽﾅ奇ｿｽ・ｽ・ｽ
+            // 総額を人数で割る
             decimal amountPerParticipant = data.Amount / (decimal)participants.Length;
 
             try
@@ -296,7 +296,7 @@ namespace FunctionbeerAPI
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
-                    string query = "SELECT * FROM Nomikai WHERE 1=1"; // 蝓ｺ譛ｬ縺ｮ繧ｯ繧ｨ繝ｪ譚｡莉ｶ
+                    string query = "SELECT * FROM Nomikai WHERE 1=1"; // 基本のクエリ条件
 
                     if (!string.IsNullOrEmpty(eventName))
                     {
@@ -364,7 +364,7 @@ namespace FunctionbeerAPI
         {
             log.LogInformation("UpdatePaymentFlags function processed a request.");
 
-            // ・ｽ・ｽ・ｽN・ｽG・ｽX・ｽg・ｽ{・ｽf・ｽB・ｽ・ｽﾇみ搾ｿｽ・ｽ・ｽ
+            // リクエストボディを読み込む
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var updates = JsonConvert.DeserializeObject<List<PaymentFlagUpdateRequest>>(requestBody);
 
@@ -411,14 +411,14 @@ namespace FunctionbeerAPI
             return new OkObjectResult(response);
         }
 
-        // ・ｽx・ｽ・ｽ・ｽ・ｽ・ｽt・ｽ・ｽ・ｽO・ｽX・ｽV・ｽ・ｽ・ｽN・ｽG・ｽX・ｽg・ｽﾌク・ｽ・ｽ・ｽX・ｽ・ｽ`
+        // 支払いフラグ更新リクエストのクラス定義
         public class PaymentFlagUpdateRequest
         {
             public int Id { get; set; }
             public bool PaymentFlag { get; set; }
         }
 
-        // CORS ・ｽﾝ抵ｿｽ・ｽK・ｽp・ｽ・ｽ・ｽ・ｽw・ｽ・ｽ・ｽp・ｽ[・ｽ・ｽ・ｽ\・ｽb・ｽh
+        // CORS 設定を適用するヘルパーメソッド
         private static IActionResult CreateCorsResponse(IActionResult result, HttpResponse response)
         {
             response.Headers.Add("Access-Control-Allow-Origin", "*");
