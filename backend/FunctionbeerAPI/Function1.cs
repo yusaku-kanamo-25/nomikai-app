@@ -12,6 +12,7 @@ using System;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 
+// 飲み会アプリ API - Version 1.0.1
 namespace FunctionbeerAPI
 {
     public static class Function1
