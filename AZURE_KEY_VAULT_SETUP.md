@@ -13,7 +13,7 @@ Server=tcp:m3hkanamofunctiondb.database.windows.net,1433;Initial Catalog=m3h-kan
 ### 2. (Optional) API Keys for Frontend
 **Secret Name:** `ApiUrl`
 ```
-https://m3h-beerkn-functionapp.azurewebsites.net
+https://nomikai-funcapp.azurewebsites.net
 ```
 
 ---

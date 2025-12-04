@@ -21,7 +21,7 @@
     },
     "resourceName": {
       "type": "string",
-      "defaultValue": "m3h-beerkn-functionapp",
+      "defaultValue": "nomikai-funcapp",
       "metadata": {
         "description": "Name of the main resource to be created by this template."
       }

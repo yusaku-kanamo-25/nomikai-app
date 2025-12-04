@@ -1,4 +1,4 @@
-# Azure Key Vault Secrets Summary
+﻿# Azure Key Vault Secrets Summary
 
 ## Quick Reference: What to Store in Azure Key Vault
 
@@ -78,7 +78,7 @@ az keyvault secret show --vault-name m3h-keyvault --name DatabaseConnectionStrin
 ### Step 1: Enable Managed Identity
 ```bash
 az functionapp identity assign \
-  --name m3h-beerkn-functionapp \
+  --name nomikai-funcapp \
   --resource-group your-resource-group
 ```
 
@@ -86,7 +86,7 @@ az functionapp identity assign \
 ```bash
 # Get Managed Identity Principal ID
 $principalId = az functionapp identity show \
-  --name m3h-beerkn-functionapp \
+  --name nomikai-funcapp \
   --resource-group your-resource-group \
   --query principalId -o tsv
 
@@ -100,7 +100,7 @@ az keyvault set-policy \
 ### Step 3: Add App Settings to Function App
 ```bash
 az functionapp config appsettings set \
-  --name m3h-beerkn-functionapp \
+  --name nomikai-funcapp \
   --resource-group your-resource-group \
   --settings KeyVaultUri="https://m3h-keyvault.vault.azure.net/"
 ```
@@ -179,7 +179,7 @@ dotnet run
 ```bash
 # Check Function App logs
 az functionapp log tail \
-  --name m3h-beerkn-functionapp \
+  --name nomikai-funcapp \
   --resource-group your-resource-group
 
 # Test endpoint
