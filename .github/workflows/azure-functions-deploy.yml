@@ -11,12 +11,12 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_NAME: 'nomikai-funcapp'
-  AZURE_FUNCTIONAPP_SCM_URL: 'nomikai-funcapp-g4hdgyachmhwfxbq.scm.japaneast-01.azurewebsites.net'
   DOTNET_VERSION: '8.0.x'
+  RESOURCE_GROUP: 'nomikai-rg'
 
 jobs:
   build-and-deploy:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     environment: production
     
     steps:
@@ -29,37 +29,25 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: 'Build and Publish'
-      shell: pwsh
       run: |
         cd backend/FunctionbeerAPI
         dotnet publish FunctionbeerAPI.csproj --configuration Release --output ./publish
 
     - name: 'Create ZIP package'
-      shell: pwsh
       run: |
-        Compress-Archive -Path backend/FunctionbeerAPI/publish/* -DestinationPath deploy.zip -Force
+        cd backend/FunctionbeerAPI/publish
+        zip -r ../../../deploy.zip .
 
-    - name: 'Deploy to Azure Functions via Kudu ZIP Deploy'
-      shell: pwsh
-      env:
-        PUBLISH_PROFILE: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-      run: |
-        # Parse credentials from publish profile
-        $xml = [xml]$env:PUBLISH_PROFILE
-        $userName = $xml.publishData.publishProfile[0].userName
-        $userPWD = $xml.publishData.publishProfile[0].userPWD
-        
-        # Create auth header
-        $base64Auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $userName, $userPWD)))
-        
-        # Deploy using Invoke-RestMethod with correct SCM URL
-        $apiUrl = "https://${{ env.AZURE_FUNCTIONAPP_SCM_URL }}/api/zipdeploy"
-        
-        Write-Host "Deploying to $apiUrl..."
-        
-        Invoke-RestMethod -Uri $apiUrl -Method Post -InFile "deploy.zip" -ContentType "application/zip" -Headers @{Authorization=("Basic {0}" -f $base64Auth)} -TimeoutSec 600
-        
-        Write-Host "Deployment completed successfully!"
+    - name: 'Login to Azure'
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: 'Deploy to Azure Functions'
+      uses: Azure/functions-action@v1
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: 'deploy.zip'
 
     - name: 'Deployment Summary'
       run: |
