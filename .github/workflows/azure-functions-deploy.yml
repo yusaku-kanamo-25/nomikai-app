@@ -33,12 +33,33 @@ jobs:
         cd backend/FunctionbeerAPI
         dotnet publish FunctionbeerAPI.csproj --configuration Release --output ./publish
 
-    - name: 'Deploy to Azure Functions'
-      uses: Azure/functions-action@v1
-      with:
-        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: 'backend/FunctionbeerAPI/publish'
-        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+    - name: 'Create ZIP package'
+      shell: pwsh
+      run: |
+        Compress-Archive -Path backend/FunctionbeerAPI/publish/* -DestinationPath deploy.zip -Force
+
+    - name: 'Deploy to Azure Functions via Kudu ZIP Deploy'
+      shell: pwsh
+      env:
+        PUBLISH_PROFILE: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+      run: |
+        # Parse credentials from publish profile
+        $xml = [xml]$env:PUBLISH_PROFILE
+        $publishUrl = $xml.publishData.publishProfile[0].publishUrl
+        $userName = $xml.publishData.publishProfile[0].userName
+        $userPWD = $xml.publishData.publishProfile[0].userPWD
+        
+        # Create auth header
+        $base64Auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $userName, $userPWD)))
+        
+        # Deploy using Invoke-RestMethod
+        $apiUrl = "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net/api/zipdeploy"
+        
+        Write-Host "Deploying to $apiUrl..."
+        
+        Invoke-RestMethod -Uri $apiUrl -Method Post -InFile "deploy.zip" -ContentType "application/zip" -Headers @{Authorization=("Basic {0}" -f $base64Auth)} -TimeoutSec 600
+        
+        Write-Host "Deployment completed successfully!"
 
     - name: 'Deployment Summary'
       run: |
