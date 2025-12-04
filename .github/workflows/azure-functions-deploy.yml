@@ -39,6 +39,8 @@ jobs:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
         package: 'backend/FunctionbeerAPI/publish'
         publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+        scm-do-build-during-deployment: false
+        enable-oryx-build: false
 
     - name: 'Deployment Summary'
       run: |
