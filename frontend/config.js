@@ -3,7 +3,8 @@
 const config = {
   // API Base URL - 環境変数またはデフォルト値から取得
   // Azure Functions App: nomikai-funcapp
-  apiBaseUrl: window.ENV?.API_BASE_URL || 'https://nomikai-funcapp.azurewebsites.net',
+  // 注意: Azure の新しい URL 形式を使用
+  apiBaseUrl: window.ENV?.API_BASE_URL || 'https://nomikai-funcapp-g4hdgyachmhwfxbq.japaneast-01.azurewebsites.net',
   
   // 指定されたエンドポイントの完全な API URL を取得
   getApiUrl: function(endpoint) {
