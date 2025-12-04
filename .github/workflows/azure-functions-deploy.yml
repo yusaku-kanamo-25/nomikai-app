@@ -33,18 +33,69 @@ jobs:
         cd backend/FunctionbeerAPI
         dotnet publish FunctionbeerAPI.csproj --configuration Release --output ./publish
 
-    - name: 'Deploy to Azure Functions'
-      uses: Azure/functions-action@v1
-      with:
-        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: 'backend/FunctionbeerAPI/publish'
-        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-        scm-do-build-during-deployment: false
-        enable-oryx-build: false
+    - name: 'Create deployment package'
+      shell: pwsh
+      run: |
+        Compress-Archive -Path backend/FunctionbeerAPI/publish/* -DestinationPath deploy.zip -Force
+
+    - name: 'Deploy using Web Deploy (MSDeploy)'
+      shell: pwsh
+      env:
+        PUBLISH_PROFILE: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+      run: |
+        # Parse publish profile for credentials
+        $xml = [xml]$env:PUBLISH_PROFILE
+        $profile = $xml.publishData.publishProfile | Where-Object { $_.publishMethod -eq 'MSDeploy' }
+        
+        if (-not $profile) {
+          $profile = $xml.publishData.publishProfile | Where-Object { $_.publishMethod -eq 'ZipDeploy' }
+        }
+        
+        $username = $profile.userName
+        $password = $profile.userPWD
+        $siteName = $profile.msdeploySite
+        
+        # Use basic auth with zip deploy API
+        $base64Auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("${username}:${password}"))
+        
+        # Try the main deployment endpoint first
+        $deployUrl = "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net/api/zipdeploy?isAsync=false"
+        
+        Write-Host "Deploying to: $deployUrl"
+        
+        try {
+          $response = Invoke-WebRequest -Uri $deployUrl `
+            -Method POST `
+            -Headers @{ Authorization = "Basic $base64Auth" } `
+            -InFile "deploy.zip" `
+            -ContentType "application/zip" `
+            -TimeoutSec 600 `
+            -UseBasicParsing
+          
+          Write-Host "Deployment successful! Status: $($response.StatusCode)"
+        }
+        catch {
+          Write-Host "Primary endpoint failed, trying alternate..."
+          
+          # Try alternate SCM URL format
+          $altDeployUrl = "https://nomikai-funcapp-g4hdgyachmhwfxbq.scm.japaneast-01.azurewebsites.net/api/zipdeploy?isAsync=true"
+          
+          $response = Invoke-WebRequest -Uri $altDeployUrl `
+            -Method POST `
+            -Headers @{ Authorization = "Basic $base64Auth" } `
+            -InFile "deploy.zip" `
+            -ContentType "application/zip" `
+            -TimeoutSec 600 `
+            -UseBasicParsing
+          
+          Write-Host "Async deployment initiated! Status: $($response.StatusCode)"
+          Write-Host "Waiting for deployment to complete..."
+          Start-Sleep -Seconds 30
+        }
 
     - name: 'Deployment Summary'
       run: |
-        echo "### Deployment Successful! :rocket:" >> $GITHUB_STEP_SUMMARY
+        echo "### Deployment Completed! :rocket:" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "- **Function App**: ${{ env.AZURE_FUNCTIONAPP_NAME }}" >> $GITHUB_STEP_SUMMARY
         echo "- **URL**: https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
