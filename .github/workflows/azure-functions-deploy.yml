@@ -11,6 +11,7 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_NAME: 'nomikai-funcapp'
+  AZURE_FUNCTIONAPP_SCM_URL: 'nomikai-funcapp-g4hdgyachmhwfxbq.scm.japaneast-01.azurewebsites.net'
   DOTNET_VERSION: '8.0.x'
 
 jobs:
@@ -45,15 +46,14 @@ jobs:
       run: |
         # Parse credentials from publish profile
         $xml = [xml]$env:PUBLISH_PROFILE
-        $publishUrl = $xml.publishData.publishProfile[0].publishUrl
         $userName = $xml.publishData.publishProfile[0].userName
         $userPWD = $xml.publishData.publishProfile[0].userPWD
         
         # Create auth header
         $base64Auth = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $userName, $userPWD)))
         
-        # Deploy using Invoke-RestMethod
-        $apiUrl = "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.scm.azurewebsites.net/api/zipdeploy"
+        # Deploy using Invoke-RestMethod with correct SCM URL
+        $apiUrl = "https://${{ env.AZURE_FUNCTIONAPP_SCM_URL }}/api/zipdeploy"
         
         Write-Host "Deploying to $apiUrl..."
         
