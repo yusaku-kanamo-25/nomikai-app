@@ -1,0 +1,34 @@
+# Azure Functions ignore file
+# Files and directories to exclude from deployment
+
+# Local settings (contains secrets)
+local.settings.json
+
+# Build artifacts
+*.user
+*.suo
+.vs/
+bin/
+obj/
+
+# IDE files
+.idea/
+*.swp
+*.swo
+
+# Test files
+*.Tests/
+test/
+tests/
+
+# Documentation
+*.md
+!README.md
+
+# Git files
+.git/
+.gitignore
+
+# Other
+*.log
+*.tmp

@@ -13,7 +13,6 @@ env:
   AZURE_FUNCTIONAPP_NAME: 'nomikai-funcapp'
   AZURE_FUNCTIONAPP_PACKAGE_PATH: 'backend/FunctionbeerAPI'
   DOTNET_VERSION: '8.0.x'
-  RESOURCE_GROUP: 'nomikai-rg'
 
 jobs:
   build-and-deploy:
@@ -29,23 +28,18 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: 'Resolve Project Dependencies'
+    - name: 'Build and Publish'
       shell: pwsh
       run: |
-        pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-        dotnet build --configuration Release --output ./output
-        popd
+        cd ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        dotnet publish FunctionbeerAPI.csproj --configuration Release --output ./publish
 
-    - name: 'Run Azure Functions Action'
+    - name: 'Deploy to Azure Functions'
       uses: Azure/functions-action@v1
-      id: fa
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
+        package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/publish'
         publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-        scm-do-build-during-deployment: false
-        enable-oryx-build: false
-        respect-funcignore: true
 
     - name: 'Deployment Summary'
       run: |

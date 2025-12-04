@@ -16,11 +16,13 @@ namespace FunctionbeerAPI
 {
     public static class Function1
     {
-        private static readonly string keyVaultUrl = Environment.GetEnvironmentVariable("KeyVaultUri") ?? "https://m3h-keyvault.vault.azure.net/";
-        
+        /// <summary>
+        /// データベース接続文字列を取得する
+        /// 優先順位: 1. 環境変数 2. Key Vault (オプション)
+        /// </summary>
         private static async Task<string> GetConnectionStringAsync()
         {
-            // Priority 1: Try environment variable first
+            // 優先順位 1: 環境変数から取得
             string connectionString = Environment.GetEnvironmentVariable("DatabaseConnectionString");
             
             if (!string.IsNullOrEmpty(connectionString))
@@ -28,25 +30,24 @@ namespace FunctionbeerAPI
                 return connectionString;
             }
             
-            // Priority 2: Try Key Vault as optional fallback (only if KeyVaultUri is configured)
+            // 優先順位 2: Key Vault から取得 (オプショナル)
             string kvUri = Environment.GetEnvironmentVariable("KeyVaultUri");
             if (!string.IsNullOrEmpty(kvUri))
             {
                 try
                 {
-                    var client = new SecretClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
+                    var client = new SecretClient(new Uri(kvUri), new DefaultAzureCredential());
                     KeyVaultSecret secret = await client.GetSecretAsync("DatabaseConnectionString");
                     return secret.Value;
                 }
                 catch (Exception ex)
                 {
-                    // Key Vault is optional, so log but continue
-                    throw new InvalidOperationException($"Environment variable 'DatabaseConnectionString' not found and Key Vault retrieval failed: {ex.Message}", ex);
+                    throw new InvalidOperationException($"環境変数 'DatabaseConnectionString' が見つからず、Key Vault 取得に失敗: {ex.Message}", ex);
                 }
             }
             
-            // No connection string available
-            throw new InvalidOperationException("Database connection string not found. Please set 'DatabaseConnectionString' environment variable or configure Key Vault.");
+            // 接続文字列が見つからない
+            throw new InvalidOperationException("データベース接続文字列が見つかりません。'DatabaseConnectionString' 環境変数を設定するか、Key Vault を設定してください。");
         }
 
         // リクエストデータの型定義クラス
@@ -70,7 +71,7 @@ namespace FunctionbeerAPI
 
             if (data.NumberOfParticipants <= 0)
             {
-                return new BadRequestObjectResult("Number of participants must be greater than 0.");
+                return CreateCorsResponse(new BadRequestObjectResult("参加人数は0より大きい必要があります。"), req.HttpContext.Response);
             }
 
             decimal amountPerParticipant = data.TotalAmount / data.NumberOfParticipants;
@@ -106,8 +107,8 @@ namespace FunctionbeerAPI
             }
             catch (Exception ex)
             {
-                log.LogError($"Error during database operation: {ex.Message}");
-                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+                log.LogError($"データベース操作エラー: {ex.Message}");
+                return CreateCorsResponse(new StatusCodeResult(StatusCodes.Status500InternalServerError), req.HttpContext.Response);
             }
 
             var result = new
@@ -117,9 +118,8 @@ namespace FunctionbeerAPI
                 AmountPerParticipant = amountPerParticipant
             };
 
-            return new OkObjectResult(result);
+            return CreateCorsResponse(new OkObjectResult(result), req.HttpContext.Response);
         }
-
 
         [FunctionName("GetHistory")]
         public static async Task<IActionResult> GetHistory(
@@ -226,7 +226,7 @@ namespace FunctionbeerAPI
 
             if (data.Amount <= 0)
             {
-                return new BadRequestObjectResult(new { Message = "Amount must be greater than 0." });
+                return CreateCorsResponse(new BadRequestObjectResult(new { Message = "金額は0より大きい必要があります。" }), req.HttpContext.Response);
             }
 
             // 参加者をカンマで分割し、各参加者のトリミング
@@ -261,17 +261,18 @@ namespace FunctionbeerAPI
             }
             catch (Exception ex)
             {
-                log.LogError($"Error during database operation: {ex.Message}");
-                return new BadRequestObjectResult(new { Message = $"Error during database operation: {ex.Message}" });
+                log.LogError($"データベース操作エラー: {ex.Message}");
+                return CreateCorsResponse(new BadRequestObjectResult(new { Message = $"データベース操作エラー: {ex.Message}" }), req.HttpContext.Response);
             }
 
             var response = new
             {
-                Message = "Nomikai event has been saved successfully for all participants."
+                Message = "飲み会イベントが全参加者分保存されました。"
             };
 
-            return new OkObjectResult(response);
+            return CreateCorsResponse(new OkObjectResult(response), req.HttpContext.Response);
         }
+
         [FunctionName("SearchNomikaiEvent")]
         public static async Task<IActionResult> SearchNomikaiEvent(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "nomikai/search")] HttpRequest req,
@@ -285,7 +286,7 @@ namespace FunctionbeerAPI
 
             if (string.IsNullOrEmpty(eventName) && string.IsNullOrEmpty(eventDate) && string.IsNullOrEmpty(name))
             {
-                return new BadRequestObjectResult("At least one query parameter (eventname, eventdate, or name) is required.");
+                return CreateCorsResponse(new BadRequestObjectResult("少なくとも1つのクエリパラメータ (eventname, eventdate, または name) が必要です。"), req.HttpContext.Response);
             }
 
             var events = new List<object>();
@@ -350,11 +351,11 @@ namespace FunctionbeerAPI
             }
             catch (Exception ex)
             {
-                log.LogError($"Error during database operation: {ex.Message}");
-                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+                log.LogError($"データベース操作エラー: {ex.Message}");
+                return CreateCorsResponse(new StatusCodeResult(StatusCodes.Status500InternalServerError), req.HttpContext.Response);
             }
 
-            return new OkObjectResult(events);
+            return CreateCorsResponse(new OkObjectResult(events), req.HttpContext.Response);
         }
 
         [FunctionName("UpdatePaymentFlags")]
@@ -370,7 +371,7 @@ namespace FunctionbeerAPI
 
             if (updates == null || updates.Count == 0)
             {
-                return new BadRequestObjectResult("No updates provided.");
+                return CreateCorsResponse(new BadRequestObjectResult("更新データがありません。"), req.HttpContext.Response);
             }
 
             try
@@ -399,16 +400,16 @@ namespace FunctionbeerAPI
             }
             catch (Exception ex)
             {
-                log.LogError($"Error during database operation: {ex.Message}");
-                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+                log.LogError($"データベース操作エラー: {ex.Message}");
+                return CreateCorsResponse(new StatusCodeResult(StatusCodes.Status500InternalServerError), req.HttpContext.Response);
             }
 
             var response = new
             {
-                Message = "Payment flags have been updated successfully."
+                Message = "支払いフラグが更新されました。"
             };
 
-            return new OkObjectResult(response);
+            return CreateCorsResponse(new OkObjectResult(response), req.HttpContext.Response);
         }
 
         // 支払いフラグ更新リクエストのクラス定義
